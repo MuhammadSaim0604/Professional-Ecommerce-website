@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Homepage Products</title>
+</head>
+<body>
+    <h1>Debug Homepage Products</h1>
+    <div id="results"></div>
+
+    <script>
+        async function testAPI() {
+            const results = document.getElementById('results');
+            
+            try {
+                // Test featured products
+                const featuredResponse = await fetch('/api/products?featured=true&limit=3');
+                const featuredData = await featuredResponse.json();
+                
+                results.innerHTML += `<h3>Featured Products API Response:</h3>`;
+                results.innerHTML += `<pre>${JSON.stringify(featuredData, null, 2)}</pre>`;
+                
+                // Test latest products
+                const latestResponse = await fetch('/api/products?sortBy=createdAt&sortOrder=desc&limit=3');
+                const latestData = await latestResponse.json();
+                
+                results.innerHTML += `<h3>Latest Products API Response:</h3>`;
+                results.innerHTML += `<pre>${JSON.stringify(latestData, null, 2)}</pre>`;
+                
+            } catch (error) {
+                results.innerHTML += `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>
