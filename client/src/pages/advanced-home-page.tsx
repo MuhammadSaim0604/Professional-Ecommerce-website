@@ -797,11 +797,11 @@ export default function AdvancedHomePage() {
                   {/* Navigation Arrows with User Interaction Handlers */}
                   <CarouselPrevious
                     className="hidden md:flex -left-12 lg:-left-16 h-12 w-12 border-2 border-gray-300 bg-white/90 backdrop-blur-sm hover:bg-white hover:border-primary hover:scale-110 transition-all duration-300 shadow-xl z-10"
-                    onClick={handleUserInteraction}
+                    onClick={handlePrevious}
                   />
                   <CarouselNext
                     className="hidden md:flex -right-12 lg:-right-16 h-12 w-12 border-2 border-gray-300 bg-white/90 backdrop-blur-sm hover:bg-white hover:border-primary hover:scale-110 transition-all duration-300 shadow-xl z-10"
-                    onClick={handleUserInteraction}
+                    onClick={handleNext}
                   />
                 </Carousel>
 
@@ -968,7 +968,7 @@ export default function AdvancedHomePage() {
         <DarazStyleFlashSale />
 
         {/* Featured Products Section */}
-        <section style={{ marginTop: "15px" }} className="mt-4 sm:mt-6 md:mt-8">
+        <section style={{ marginTop: "15px" }} className="mt-4 sm:mt-6 md:mt-8 md:px-[70px]">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="bg-yellow-500 p-2 rounded">
@@ -1124,7 +1124,7 @@ export default function AdvancedHomePage() {
         </section>
 
         {/* New Arrivals Section */}
-        <section style={{ marginTop: "30px" }} className="mt-4 sm:mt-6 md:mt-8">
+        <section style={{ marginTop: "30px" }} className="mt-4 sm:mt-6 md:mt-8 md:px-[70px]">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="bg-green-500 p-1.5 sm:p-2 rounded">
@@ -1284,7 +1284,7 @@ export default function AdvancedHomePage() {
         </section>
 
         {/* All Products Section */}
-        <section className="mt-4 sm:mt-6 md:mt-8">
+        <section className="mt-4 sm:mt-6 md:mt-8 md:px-[70px]">
           <div className="flex items-center justify-between mb-4 sm:mb-6 md:mb-8">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="bg-blue-500 p-1.5 sm:p-2 rounded">
@@ -1314,7 +1314,7 @@ export default function AdvancedHomePage() {
           {allProductsLoading ? (
             <LoadingSkeleton />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 md:gap-1">
               {allProducts.map((product: Product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

@@ -7,8 +7,15 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 // Fetch system settings to get currency preference
+// Define the expected shape of the settings object
+type SystemSettings = {
+  currency?: {
+    value?: string;
+  };
+};
+
 export function useCurrency() {
-  const { data: settings } = useQuery({
+  const { data: settings } = useQuery<SystemSettings>({
     queryKey: ['/api/system-settings/public'],
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
