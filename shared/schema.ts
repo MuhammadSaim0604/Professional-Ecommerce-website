@@ -48,7 +48,10 @@ export const categories = pgTable("categories", {
   description: text("description"),
   image: text("image"),
   isActive: boolean("is_active").notNull().default(true),
+  // Subcategories field to store automatically generated subcategories
+  subcategories: jsonb("subcategories").default([]), // Array of {sub_name: string, picture: string, search_term: string}
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Products table
@@ -85,6 +88,8 @@ export const products = pgTable("products", {
   size: text("size"),
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
+  // Subcategory field for products - takes priority over auto-generated subcategories
+  subcategory: text("subcategory"), // Can contain sub_category_name, sub_category_value, or search_term
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

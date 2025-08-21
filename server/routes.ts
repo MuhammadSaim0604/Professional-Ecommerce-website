@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
@@ -73,23 +73,30 @@ const upload = multer({
   }
 });
 
-function requireAuth(req: any, res: any, next: any) {
+// Enhanced types for authenticated requests
+interface AuthenticatedRequest extends Request {
+  isAuthenticated: () => boolean;
+  user?: any;
+  login: (user: any, callback: (err: any) => void) => void;
+}
+
+function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Authentication required" });
   }
   next();
 }
 
-function requireAdmin(req: any, res: any, next: any) {
+function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   if (!req.isAuthenticated() || req.user.role !== 'admin') {
     return res.status(403).json({ message: "Admin access required" });
   }
   next();
 }
 
-// Add error handler middleware
-function asyncHandler(fn: Function) {
-  return (req: any, res: any, next: any) => {
+// Enhanced asyncHandler with proper types
+function asyncHandler<T = any>(fn: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<T>) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
@@ -106,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   setupAuth(app);
 
-  app.post("/api/auth/register", async (req, res, next) => {
+  app.post("/api/auth/register", async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       // Check for existing username
       const existingUserByUsername = await storage.getUserByUsername(req.body.username);
@@ -139,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Log the user in automatically
-      req.login(user, (err) => {
+      req.login(user, (err: any) => {
         if (err) {
           console.error("Login error after registration:", err);
           return res.status(500).json({ message: "User created but login failed" });
@@ -149,14 +156,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { password, ...userResponse } = user;
         res.status(201).json(userResponse);
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Registration error:", error);
       res.status(500).json({ message: "Internal server error during registration" });
     }
   });
 
   // User Profile Management
-  app.put("/api/profile", requireAuth, ...routeEncryption.users, asyncHandler(async (req: any, res: any) => {
+  app.put("/api/profile", requireAuth, ...routeEncryption.users, asyncHandler(async (req: Request & { user: any }, res: Response) => {
     const profileData = z.object({
       firstName: z.string().min(1).optional(),
       lastName: z.string().min(1).optional(),
@@ -184,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updatedUser);
   }));
 
-  app.put("/api/profile/avatar", requireAuth, asyncHandler(async (req: any, res: any) => {
+  app.put("/api/profile/avatar", requireAuth, asyncHandler(async (req: Request & { user: any }, res: Response) => {
     const { avatar } = z.object({
       avatar: z.string().url(),
     }).parse(req.body);
@@ -198,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ avatar: updatedUser.avatar });
   }));
 
-  app.put("/api/profile/preferences", requireAuth, asyncHandler(async (req: any, res: any) => {
+  app.put("/api/profile/preferences", requireAuth, asyncHandler(async (req: Request & { user: any }, res: Response) => {
     const preferences = z.object({
       emailNotifications: z.boolean().optional(),
       smsNotifications: z.boolean().optional(),
@@ -218,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updatedUser);
   }));
 
-  app.put("/api/profile/privacy", requireAuth, asyncHandler(async (req: any, res: any) => {
+  app.put("/api/profile/privacy", requireAuth, asyncHandler(async (req: Request & { user: any }, res: Response) => {
     const privacySettings = z.object({
       profileVisibility: z.enum(['public', 'private', 'friends']).optional(),
       showEmail: z.boolean().optional(),
@@ -235,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updatedUser);
   }));
 
-  app.put("/api/profile/password", requireAuth, asyncHandler(async (req: any, res: any) => {
+  app.put("/api/profile/password", requireAuth, asyncHandler(async (req: Request & { user: any }, res: Response) => {
     const { currentPassword, newPassword } = z.object({
       currentPassword: z.string().min(1),
       newPassword: z.string().min(6),
@@ -262,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Categories
-  app.get("/api/categories", asyncHandler(async (req, res) => {
+  app.get("/api/categories", asyncHandler(async (req: Request, res: Response) => {
     const { search, status, limit, offset, sortBy, sortOrder } = req.query;
 
     // If any filtering parameters are provided, use enhanced method
@@ -285,13 +292,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
-  app.post("/api/categories", requireAdmin, upload.single('image'), asyncHandler(async (req, res) => {
+  app.post("/api/categories", requireAdmin, upload.single('image'), asyncHandler(async (req: Request, res: Response) => {
     // Parse form data
     const categoryData = {
       name: req.body.name,
       slug: req.body.slug,
       description: req.body.description || '',
     };
+
+    // Parse subcategories from JSON string
+    let subcategories = [];
+    if (req.body.subcategories) {
+      try {
+        subcategories = JSON.parse(req.body.subcategories);
+      } catch (error) {
+        console.log('Error parsing subcategories:', error);
+        subcategories = [];
+      }
+    }
 
     // Validate required fields
     if (!categoryData.name) {
@@ -318,6 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       description: categoryData.description,
       image: imageUrl,
       isActive: true,
+      subcategories: subcategories,
     };
 
     const category = await storage.createCategory(processedData);
@@ -328,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(201).json(category);
   }));
 
-  app.put("/api/categories/:id", requireAdmin, upload.single('image'), asyncHandler(async (req, res) => {
+  app.put("/api/categories/:id", requireAdmin, upload.single('image'), asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
 
     // Parse form data
@@ -339,6 +358,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.body.slug !== undefined) updates.slug = req.body.slug;
     if (req.body.isActive !== undefined) {
       updates.isActive = req.body.isActive === 'true' || req.body.isActive === true;
+    }
+
+    // Parse subcategories for update
+    if (req.body.subcategories !== undefined) {
+      try {
+        updates.subcategories = JSON.parse(req.body.subcategories);
+      } catch (error) {
+        console.log('Error parsing subcategories in update:', error);
+        updates.subcategories = [];
+      }
     }
 
     // Update slug if name changed
@@ -387,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
-  app.patch("/api/categories/:id", requireAdmin, upload.single('image'), asyncHandler(async (req, res) => {
+  app.patch("/api/categories/:id", requireAdmin, upload.single('image'), asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
 
     // Parse form data
@@ -427,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(category);
   }));
 
-  app.delete("/api/categories/:id", requireAdmin, asyncHandler(async (req, res) => {
+  app.delete("/api/categories/:id", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const success = await storage.deleteCategory(id);
 
@@ -442,10 +471,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Products
-  app.get("/api/products", asyncHandler(async (req, res) => {
+  app.get("/api/products", asyncHandler(async (req: Request, res: Response) => {
     const {
       categoryId,
+      category,
       search,
+      sub_term,
       featured,
       active,
       archived,
@@ -467,8 +498,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } = req.query;
 
     const params = {
-      categoryId: categoryId ? parseInt(categoryId as string) : undefined,
+      categoryId: categoryId ? parseInt(categoryId as string) : (category ? parseInt(category as string) : undefined),
       search: search as string,
+      sub_term: sub_term as string,
       featured: featured === "true", // Note: This will be mapped to productType filter in storage
       active: active !== undefined ? active === "true" : undefined,
       archived: archived === "true",
@@ -494,30 +526,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Product type endpoints - must be before /:slug route
-  app.get("/api/products/featured", asyncHandler(async (req, res) => {
+  app.get("/api/products/featured", asyncHandler(async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const featuredProducts = await storage.getProductsByType("featured", limit);
     res.json({ products: featuredProducts });
   }));
 
-  app.get("/api/products/new-arrivals", asyncHandler(async (req, res) => {
+  app.get("/api/products/new-arrivals", asyncHandler(async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const newArrivalProducts = await storage.getProductsByType("new_arrivals", limit);
     res.json({ products: newArrivalProducts });
   }));
 
-  app.get("/api/products/flash-sale", asyncHandler(async (req, res) => {
+  app.get("/api/products/flash-sale", asyncHandler(async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const flashSaleProducts = await storage.getProductsByType("flash_sale", limit);
     res.json({ products: flashSaleProducts });
   }));
 
-  app.get("/api/products/simple", asyncHandler(async (req, res) => {
+  app.get("/api/products/simple", asyncHandler(async (req: Request, res: Response) => {
     const simpleProducts = await storage.getProductsByType("simple");
     res.json(simpleProducts);
   }));
 
-  app.get("/api/products/:slug", asyncHandler(async (req, res) => {
+  app.get("/api/products/:slug", asyncHandler(async (req: Request, res: Response) => {
     const slug = req.params.slug;
     let product;
 
@@ -549,7 +581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(formattedProduct);
   }));
 
-  app.post("/api/products", requireAdmin, ...routeEncryption.products, upload.array('images', 10), asyncHandler(async (req, res) => {
+  app.post("/api/products", requireAdmin, ...routeEncryption.products, upload.array('images', 10), asyncHandler(async (req: Request, res: Response) => {
     // Parse form data
     const productData = {
       name: req.body.name,
@@ -660,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(201).json(product);
   }));
 
-  app.put("/api/products/:id", requireAdmin, asyncHandler(async (req, res) => {
+  app.put("/api/products/:id", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const updates = z.object({
       name: z.string().min(1).max(200).optional(),
@@ -761,7 +793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(product);
   }));
 
-  app.patch("/api/products/:id", requireAdmin, upload.array('images', 10), asyncHandler(async (req, res) => {
+  app.patch("/api/products/:id", requireAdmin, upload.array('images', 10), asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
@@ -784,6 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.body.size !== undefined) updates.size = req.body.size;
     if (req.body.metaTitle !== undefined) updates.metaTitle = req.body.metaTitle;
     if (req.body.metaDescription !== undefined) updates.metaDescription = req.body.metaDescription;
+    if (req.body.subcategory !== undefined) updates.subcategory = req.body.subcategory; // Handle subcategory field
 
     // Handle numeric fields with proper validation
     if (req.body.price !== undefined && req.body.price !== '') {
@@ -1989,19 +2022,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Analytics (Admin only)
-  app.get("/api/analytics", requireAdmin, asyncHandler(async (req, res) => {
+  app.get("/api/analytics", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
     const analytics = await storage.getAnalytics();
     res.json(analytics);
   }));
 
   // Reviews
-  app.get("/api/products/:id/reviews", asyncHandler(async (req, res) => {
+  app.get("/api/products/:id/reviews", asyncHandler(async (req: Request, res: Response) => {
     const productId = parseInt(req.params.id);
     const reviews = await storage.getProductReviews(productId);
     res.json({ success: true, data: reviews });
   }));
 
-  app.post("/api/products/:id/reviews", requireAuth, asyncHandler(async (req, res) => {
+  app.post("/api/products/:id/reviews", requireAuth, asyncHandler(async (req: Request & { user: any }, res: Response) => {
     const productId = parseInt(req.params.id);
     const reviewData = z.object({
       rating: z.number().int().min(1).max(5),
@@ -2019,12 +2052,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Admin coupon routes (secure)
-  app.get("/api/coupons", requireAdmin, asyncHandler(async (req, res) => {
+  app.get("/api/coupons", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
     const coupons = await storage.getAllCoupons();
     res.json(coupons);
   }));
 
-  app.post("/api/coupons", requireAdmin, asyncHandler(async (req, res) => {
+  app.post("/api/coupons", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
     const couponData = z.object({
       code: z.string().min(1).max(50),
       discountType: z.enum(['percentage', 'fixed']),
@@ -2049,7 +2082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(201).json(coupon);
   }));
 
-  app.put("/api/coupons/:id", requireAdmin, asyncHandler(async (req, res) => {
+  app.put("/api/coupons/:id", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const updates = z.object({
       code: z.string().min(1).max(50).optional(),

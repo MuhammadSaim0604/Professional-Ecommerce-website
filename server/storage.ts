@@ -49,7 +49,7 @@ import {
   type InsertEditorSetting,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, like, and, or, count, sum, ilike, gte, lte, gt, inArray, sql, ne } from "drizzle-orm";
+import { eq, desc, asc, like, and, or, count, sum, ilike, gte, lte, gt, inArray, sql, ne, isNotNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -284,6 +284,7 @@ export interface IStorage {
 
   // System Settings
   getSystemSettings(): Promise<SystemSetting[]>;
+  getPublicSystemSettings(): Promise<SystemSetting[]>;
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
   createSystemSetting(setting: InsertSystemSetting): Promise<SystemSetting>;
   updateSystemSetting(
@@ -291,6 +292,24 @@ export interface IStorage {
     updates: Partial<InsertSystemSetting>,
   ): Promise<SystemSetting | undefined>;
   deleteSystemSetting(id: number): Promise<boolean>;
+
+  // Search functionality
+  searchProducts(query: string, options?: any): Promise<{ products: Product[]; total: number }>;
+  getSearchSuggestions(query: string): Promise<string[]>;
+
+  // Cart helpers
+  getCartCount(userId: number): Promise<number>;
+  getCartItem(userId: number, productId: number): Promise<CartItem | undefined>;
+
+  // Wishlist helpers
+  getWishlistCount(userId: number): Promise<number>;
+  getWishlistItem(userId: number, productId: number): Promise<WishlistItem | undefined>;
+
+  // Address helpers
+  getUserAddress(userId: number, addressId: number): Promise<Address | undefined>;
+
+  // Order payment helpers
+  updateOrderPaymentStatus(orderId: number, paymentStatus: string, paymentProof?: string): Promise<Order | undefined>;
 
   // Editor Settings
   getEditorSettings(): Promise<EditorSetting | undefined>;
@@ -334,11 +353,11 @@ export interface IStorage {
   importBanners(banners: any[]): Promise<{imported: number, skipped: number}>;
   importNotifications(notifications: any[]): Promise<{imported: number, skipped: number}>;
 
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({
@@ -712,7 +731,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<Category | undefined> {
     const [category] = await db
       .update(categories)
-      .set(updates)
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(categories.id, id))
       .returning();
     return category || undefined;
@@ -721,6 +740,51 @@ export class DatabaseStorage implements IStorage {
   async deleteCategory(id: number): Promise<boolean> {
     const result = await db.delete(categories).where(eq(categories.id, id));
     return result.rowCount > 0;
+  }
+
+  // Helper method to update subcategory image if it doesn't already exist
+  private async updateSubcategoryImageIfNeeded(
+    categoryId: number, 
+    subcategoryName: string, 
+    imageUrl: string
+  ): Promise<void> {
+    try {
+      const category = await this.getCategory(categoryId);
+      if (!category || !Array.isArray(category.subcategories)) {
+        return;
+      }
+
+      const subcategories = [...category.subcategories];
+      const subcategoryIndex = subcategories.findIndex(sub => 
+        sub.search_term && sub.search_term.toLowerCase() === subcategoryName.toLowerCase()
+      );
+
+      if (subcategoryIndex >= 0) {
+        const existingSub = subcategories[subcategoryIndex];
+        // Only update picture if it doesn't exist or is empty
+        if (!existingSub.picture || existingSub.picture.trim().length === 0) {
+          subcategories[subcategoryIndex] = {
+            ...existingSub,
+            picture: imageUrl
+          };
+
+          // Update the category with the modified subcategories
+          await db
+            .update(categories)
+            .set({ 
+              subcategories: subcategories,
+              updatedAt: new Date()
+            })
+            .where(eq(categories.id, categoryId));
+
+          console.log(`✅ Updated subcategory "${subcategoryName}" picture for category ${categoryId}`);
+        } else {
+          console.log(`ℹ️ Subcategory "${subcategoryName}" already has a picture, skipping update`);
+        }
+      }
+    } catch (error) {
+      console.error(`Error updating subcategory image for category ${categoryId}:`, error);
+    }
   }
 
   // Products
@@ -744,6 +808,7 @@ export class DatabaseStorage implements IStorage {
     params: {
       categoryId?: number;
       search?: string;
+      sub_term?: string;
       featured?: boolean;
       active?: boolean;
       archived?: boolean;
@@ -766,6 +831,7 @@ export class DatabaseStorage implements IStorage {
     const {
       categoryId,
       search,
+      sub_term,
       featured,
       active,
       archived,
@@ -808,15 +874,29 @@ export class DatabaseStorage implements IStorage {
         conditions.push(eq(products.categoryId, categoryId));
       }
 
-      if (search) {
+      // Simple search logic - avoid JSONB conflicts
+      if (search && sub_term) {
+        // When both are provided, prioritize subcategory search
+        conditions.push(
+          or(
+            ilike(products.subcategory, `%${sub_term}%`),
+            ilike(products.name, `%${search}%`)
+          )!
+        );
+      } else if (search) {
+        // General search
         conditions.push(
           or(
             ilike(products.name, `%${search}%`),
             ilike(products.description, `%${search}%`),
             ilike(products.sku, `%${search}%`),
             ilike(products.brand, `%${search}%`),
+            ilike(products.subcategory, `%${search}%`)
           )!,
         );
+      } else if (sub_term) {
+        // Subcategory-specific search
+        conditions.push(ilike(products.subcategory, `%${sub_term}%`));
       }
 
       // Handle product type filters
@@ -894,9 +974,23 @@ export class DatabaseStorage implements IStorage {
       // Map categories to products
       const categoryMap = new Map(categoriesResult.map(cat => [cat.id, cat]));
 
-      const productsWithCategories = productsResult.map(product => ({
+      const productsWithCategories = productsResult.map(product => {
+        const category = product.categoryId ? categoryMap.get(product.categoryId) : null;
+        // Remove subcategories from category object to fix the /products API issue (user's request)
+        const categoryWithoutSubcategories = category ? {
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          image: category.image,
+          isActive: category.isActive,
+          createdAt: category.createdAt,
+          updatedAt: category.updatedAt
+        } : null;
+        
+        return {
         ...product,
-        category: product.categoryId ? categoryMap.get(product.categoryId) : null,
+        category: categoryWithoutSubcategories,
         // Handle image URL - take first image or use placeholder
         imageUrl: product.images && Array.isArray(product.images) && product.images.length > 0 
           ? product.images[0] 
@@ -906,7 +1000,8 @@ export class DatabaseStorage implements IStorage {
         originalPrice: product.salePrice ? product.price?.toString() : undefined,
         salePrice: product.salePrice ? product.salePrice.toString() : undefined,
         featured: product.productType === 'featured',
-      }));
+      };
+      });
 
       // Get total count
       let countQuery = db.select({ count: count() }).from(products);
@@ -963,6 +1058,8 @@ export class DatabaseStorage implements IStorage {
       // SEO fields
       metaTitle: data.metaTitle || null,
       metaDescription: data.metaDescription || null,
+      // Subcategory field (user's request for explicit subcategory management)
+      subcategory: data.subcategory || null,
     };
 
     const [product] = await db.insert(products).values(productData).returning();
@@ -973,12 +1070,37 @@ export class DatabaseStorage implements IStorage {
     id: number,
     updates: Partial<InsertProduct>,
   ): Promise<Product | undefined> {
+    // First get the current product to check for changes
+    const currentProduct = await this.getProduct(id);
+    if (!currentProduct) {
+      return undefined;
+    }
+
     const [product] = await db
       .update(products)
       .set(updates)
       .where(eq(products.id, id))
       .returning();
-    return product || undefined;
+    
+    if (!product) {
+      return undefined;
+    }
+
+    // Check if subcategory was updated and product has images
+    if (updates.subcategory && 
+        updates.subcategory.trim().length > 0 && 
+        product.categoryId &&
+        Array.isArray(product.images) && 
+        product.images.length > 0) {
+      
+      await this.updateSubcategoryImageIfNeeded(
+        product.categoryId, 
+        updates.subcategory.trim(), 
+        product.images[0]
+      );
+    }
+
+    return product;
   }
 
   async deleteProduct(id: number): Promise<boolean> {
@@ -2178,7 +2300,7 @@ export class DatabaseStorage implements IStorage {
         .leftJoin(categories, eq(products.categoryId, categories.id))
         .where(
           and(
-            eq(products.isFlashSale, true),
+            eq(products.productType, 'flash_sale'),
             eq(products.isActive, true)
           )
         )
@@ -3038,6 +3160,144 @@ export class DatabaseStorage implements IStorage {
       console.error('Error clearing database data:', error);
       throw error;
     }
+  }
+
+  // Implementation of missing methods
+  async getPublicSystemSettings(): Promise<SystemSetting[]> {
+    return await db.select().from(systemSettings).where(eq(systemSettings.isPublic, true));
+  }
+
+  async searchProducts(query: string, options: any = {}): Promise<{ products: Product[]; total: number }> {
+    const { limit = 20, offset = 0, categoryId, minPrice, maxPrice, inStock } = options;
+    
+    let conditions: any[] = [eq(products.isActive, true)];
+    
+    if (query) {
+      conditions.push(
+        or(
+          ilike(products.name, `%${query}%`),
+          ilike(products.description, `%${query}%`),
+          ilike(products.shortDescription, `%${query}%`)
+        )
+      );
+    }
+    
+    if (categoryId) {
+      conditions.push(eq(products.categoryId, categoryId));
+    }
+    
+    if (minPrice) {
+      conditions.push(gte(products.price, minPrice));
+    }
+    
+    if (maxPrice) {
+      conditions.push(lte(products.price, maxPrice));
+    }
+    
+    if (inStock) {
+      conditions.push(gt(products.stock, 0));
+    }
+
+    let baseQuery = db.select().from(products);
+    if (conditions.length > 0) {
+      baseQuery = baseQuery.where(and(...conditions));
+    }
+
+    const [productsResult, totalCount] = await Promise.all([
+      baseQuery.limit(limit).offset(offset),
+      db.select({ count: count() }).from(products).where(and(...conditions))
+    ]);
+
+    return {
+      products: productsResult,
+      total: totalCount[0]?.count || 0
+    };
+  }
+
+  async getSearchSuggestions(query: string): Promise<string[]> {
+    if (!query || query.length < 2) return [];
+    
+    const result = await db
+      .select({ name: products.name })
+      .from(products)
+      .where(
+        and(
+          eq(products.isActive, true),
+          ilike(products.name, `%${query}%`)
+        )
+      )
+      .limit(10);
+    
+    return result.map(p => p.name);
+  }
+
+  async getCartCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(cartItems)
+      .where(eq(cartItems.userId, userId));
+    return result[0]?.count || 0;
+  }
+
+  async getCartItem(userId: number, productId: number): Promise<CartItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(cartItems)
+      .where(
+        and(
+          eq(cartItems.userId, userId),
+          eq(cartItems.productId, productId)
+        )
+      );
+    return item;
+  }
+
+  async getWishlistCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(wishlistItems)
+      .where(eq(wishlistItems.userId, userId));
+    return result[0]?.count || 0;
+  }
+
+  async getWishlistItem(userId: number, productId: number): Promise<WishlistItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(wishlistItems)
+      .where(
+        and(
+          eq(wishlistItems.userId, userId),
+          eq(wishlistItems.productId, productId)
+        )
+      );
+    return item;
+  }
+
+  async getUserAddress(userId: number, addressId: number): Promise<Address | undefined> {
+    const [address] = await db
+      .select()
+      .from(addresses)
+      .where(
+        and(
+          eq(addresses.userId, userId),
+          eq(addresses.id, addressId)
+        )
+      );
+    return address;
+  }
+
+  async updateOrderPaymentStatus(orderId: number, paymentStatus: string, paymentProof?: string): Promise<Order | undefined> {
+    const updateData: any = { paymentStatus };
+    if (paymentProof) {
+      updateData.paymentProof = paymentProof;
+    }
+    
+    const [order] = await db
+      .update(orders)
+      .set(updateData)
+      .where(eq(orders.id, orderId))
+      .returning();
+    return order;
   }
 }
 

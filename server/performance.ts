@@ -1,5 +1,6 @@
 import compression from 'compression';
 import type { Express } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 // Performance middleware
 export function setupPerformanceMiddleware(app: Express) {
@@ -33,7 +34,7 @@ export function setupPerformanceMiddleware(app: Express) {
 }
 
 // Simple request timing middleware
-export function requestTimer(req: any, res: any, next: any) {
+export function requestTimer(req: Request, res: Response, next: NextFunction) {
   const start = Date.now();
   
   res.on('finish', () => {
@@ -44,4 +45,11 @@ export function requestTimer(req: any, res: any, next: any) {
   });
   
   next();
+}
+
+// Async handler wrapper to catch errors
+export function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
 }

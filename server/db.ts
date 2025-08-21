@@ -4,8 +4,6 @@ import ws from "ws";
 import * as schema from "@shared/schema";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import dotenv from "dotenv";
-dotenv.config();
 
 // Configure WebSocket for Neon database connection (required for serverless)
 neonConfig.webSocketConstructor = ws;
@@ -85,6 +83,8 @@ async function initializeDatabase() {
   }
 
   // No sample data creation - only admin user and empty tables
+
+  // Subcategories are now managed manually by admin only
 
   return db;
 }

@@ -31,7 +31,6 @@ const CartPage = lazy(() => import("@/pages/cart-page"));
 const CheckoutPage = lazy(() => import("@/pages/checkout-enhanced-multi"));
 const UserDashboard = lazy(() => import("@/pages/user-dashboard"));
 const AdminCompleteEnhanced = lazy(() => import("@/pages/admin-complete-enhanced"));
-const AdminProductsFixed = lazy(() => import("@/pages/admin-products-fixed"));
 const WishlistPage = lazy(() => import("@/pages/wishlist-page"));
 const CategoriesPage = lazy(() => import("@/pages/categories-page"));
 const CategoryDetail = lazy(() => import("@/pages/category-detail"));
@@ -83,15 +82,6 @@ function Router() {
           </main>
         </Route>
 
-        <Route path="/admin/products">
-          <main className="flex-1">
-            <ProtectedRoute adminOnly>
-              <Suspense fallback={<PageLoader />}>
-                <AdminProductsFixed />
-              </Suspense>
-            </ProtectedRoute>
-          </main>
-        </Route>
 
         {/* All other routes - with footer */}
         <Route>

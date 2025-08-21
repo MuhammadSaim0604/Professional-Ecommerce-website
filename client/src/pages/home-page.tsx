@@ -100,6 +100,7 @@ export default function HomePage() {
   const featuredRef = useRef<HTMLDivElement>(null);
   const newArrivalsRef = useRef<HTMLDivElement>(null);
 
+
   const { data: banners, isLoading: bannersLoading } = useQuery({
     queryKey: ["/api/banners/active"],
   });
@@ -130,6 +131,7 @@ export default function HomePage() {
     queryKey: ["/api/products/new-arrivals"],
     queryFn: () => apiRequest("/api/products/new-arrivals"),
   });
+
 
   // Horizontal scroll functions
   const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
@@ -516,6 +518,7 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
 
       {/* Newsletter Section */}
       <section className="py-16 bg-primary/5">

@@ -193,7 +193,7 @@ export function DarazStyleFlashSale() {
       style={{ marginTop: "20px" }}
       className="py-4 bg-white dark:bg-gray-900 mt-4 sm:mt-6 md:mt-8"
     >
-      <div className="container mx-auto md:px-[70px]">
+      <div className="container mx-auto">
         {/* Header - Exactly matching Daraz design */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">

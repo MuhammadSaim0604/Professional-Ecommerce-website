@@ -624,6 +624,7 @@ export default function AdminCompleteEnhanced() {
     color: "",
     size: "",
     tags: "",
+    subcategory: "", // New subcategory field for single word/phrase
     productType: "simple", // New product type field
     flashSaleDiscount: "",
     flashSaleStartDate: "",
@@ -675,9 +676,28 @@ export default function AdminCompleteEnhanced() {
     metaDescription: "",
     isActive: true,
     sortOrder: 0,
+    subcategories: [] as Array<{sub_name: string; picture: string; search_term: string}>,
   });
+  const [newSubcategory, setNewSubcategory] = useState("");
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  
+  // Subcategories for product form dropdown
+  const [availableSubcategories, setAvailableSubcategories] = useState<Array<{sub_name: string; search_term: string}>>([]);
+
+  // Function to get subcategories for a specific category
+  const getSubcategoriesForCategory = (categoryId: string) => {
+    if (!categoryId || !allCategories) return [];
+    
+    const category = allCategories.find(cat => cat.id.toString() === categoryId);
+    if (!category || !category.subcategories) return [];
+    
+    // Combine both auto-generated and manually added subcategories
+    return category.subcategories.map(sub => ({
+      sub_name: sub.sub_name,
+      search_term: sub.search_term || sub.sub_name.toLowerCase()
+    }));
+  };
 
   const [couponForm, setCouponForm] = useState({
     code: "",
@@ -795,6 +815,17 @@ export default function AdminCompleteEnhanced() {
     sortBy: "name",
     sortOrder: "asc" as "asc" | "desc",
   });
+
+  // Update available subcategories when category changes
+  useEffect(() => {
+    const subcategories = getSubcategoriesForCategory(productForm.categoryId);
+    setAvailableSubcategories(subcategories);
+    
+    // Clear subcategory selection if it's no longer valid for the new category
+    if (productForm.subcategory && !subcategories.find(sub => sub.search_term === productForm.subcategory)) {
+      setProductForm(prev => ({ ...prev, subcategory: "" }));
+    }
+  }, [productForm.categoryId, allCategories]);
 
   const [userForm, setUserForm] = useState({
     username: "",
@@ -1446,10 +1477,11 @@ export default function AdminCompleteEnhanced() {
       description: category.description || "",
       slug: category.slug || "",
       image: null,
-      metaTitle: category.metaTitle || "",
-      metaDescription: category.metaDescription || "",
-      isActive: category.isActive !== false,
-      sortOrder: category.sortOrder || 0,
+      metaTitle: (category as any).metaTitle || "",
+      metaDescription: (category as any).metaDescription || "",
+      isActive: (category as any).isActive !== false,
+      sortOrder: (category as any).sortOrder || 0,
+      subcategories: category.subcategories || [],
     });
     setShowCategoryDialog(true);
   };
@@ -1483,6 +1515,9 @@ export default function AdminCompleteEnhanced() {
     formData.append("metaDescription", categoryForm.metaDescription || "");
     formData.append("isActive", categoryForm.isActive.toString());
     formData.append("sortOrder", categoryForm.sortOrder.toString());
+    
+    // Add subcategories array to formData
+    formData.append("subcategories", JSON.stringify(categoryForm.subcategories));
 
     // Handle image upload
     if (categoryForm.image) {
@@ -1536,6 +1571,7 @@ export default function AdminCompleteEnhanced() {
         metaDescription: "",
         isActive: true,
         sortOrder: 0,
+        subcategories: [],
       });
     } catch (error: any) {
       console.error('Category save error:', error);
@@ -1587,6 +1623,9 @@ export default function AdminCompleteEnhanced() {
           .filter((tag) => tag)
       : [];
     formData.append("tags", JSON.stringify(tagsArray));
+
+    // Add subcategory field (user's request for single word/phrase)
+    formData.append("subcategory", productForm.subcategory || "");
 
     // Add existing images (URLs) and new images (Files) to FormData
     if (editingProduct) {
@@ -3770,6 +3809,7 @@ export default function AdminCompleteEnhanced() {
                             color: product.color || "",
                             size: product.size || "",
                             tags: product.tags ? product.tags.join(", ") : "",
+                            subcategory: (product as any).subcategory || "", // Load existing subcategory value
                             productType: (product as any).productType || "simple",
                             flashSaleDiscount: (product as any).flashSaleDiscount?.toString() || "",
                             flashSaleStartDate: (product as any).flashSaleStartDate ? new Date((product as any).flashSaleStartDate).toISOString().slice(0, 16) : "",
@@ -3957,6 +3997,38 @@ export default function AdminCompleteEnhanced() {
                         }
                         placeholder="electronics, smartphone, android"
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="subcategory">Subcategory</Label>
+                      <Select
+                        value={productForm.subcategory}
+                        onValueChange={(value) => 
+                          setProductForm((prev) => ({
+                            ...prev,
+                            subcategory: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a subcategory (filtered by category)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableSubcategories.length > 0 ? (
+                            availableSubcategories.map((subcategory, index) => (
+                              <SelectItem key={index} value={subcategory.search_term}>
+                                {subcategory.sub_name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-subcategories" disabled>
+                              {productForm.categoryId ? "No subcategories available for this category" : "Select a category first"}
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Subcategories are filtered by the selected category above
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -4960,7 +5032,9 @@ export default function AdminCompleteEnhanced() {
         metaTitle: "",
         metaDescription: "",
         isActive: true,
+        subcategories: [],
       });
+      setNewSubcategory("");
       setShowCategoryDialog(true);
     };
 
@@ -5044,6 +5118,88 @@ export default function AdminCompleteEnhanced() {
                         placeholder="0"
                       />
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Subcategories Management */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Subcategories Management</CardTitle>
+                    <p className="text-sm text-muted-foreground">Add custom subcategories for this category</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Add new subcategory */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter subcategory name (e.g., smartphones, laptops)"
+                        value={newSubcategory}
+                        onChange={(e) => setNewSubcategory(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (newSubcategory.trim()) {
+                              const newSub = {
+                                sub_name: newSubcategory.trim(),
+                                picture: "", // Will be auto-assigned by server
+                                search_term: newSubcategory.trim().toLowerCase()
+                              };
+                              setCategoryForm(prev => ({
+                                ...prev,
+                                subcategories: [...prev.subcategories, newSub]
+                              }));
+                              setNewSubcategory("");
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (newSubcategory.trim()) {
+                            const newSub = {
+                              sub_name: newSubcategory.trim(),
+                              picture: "", // Will be auto-assigned by server
+                              search_term: newSubcategory.trim().toLowerCase()
+                            };
+                            setCategoryForm(prev => ({
+                              ...prev,
+                              subcategories: [...prev.subcategories, newSub]
+                            }));
+                            setNewSubcategory("");
+                          }
+                        }}
+                        disabled={!newSubcategory.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Display existing subcategories */}
+                    {categoryForm.subcategories.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Current Subcategories</Label>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {categoryForm.subcategories.map((subcategory, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                              <span className="text-sm">{subcategory.sub_name}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setCategoryForm(prev => ({
+                                    ...prev,
+                                    subcategories: prev.subcategories.filter((_, i) => i !== index)
+                                  }));
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

@@ -64,23 +64,31 @@ const upload = multer({
   }
 });
 
-function requireAuth(req: any, res: any, next: any) {
+// Enhanced types for authenticated requests
+interface AuthenticatedRequest extends express.Request {
+  isAuthenticated: () => boolean;
+  user?: any;
+  login: (user: any, callback: (err: any) => void) => void;
+  session?: any;
+}
+
+function requireAuth(req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Authentication required" });
   }
   next();
 }
 
-function requireAdmin(req: any, res: any, next: any) {
+function requireAdmin(req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) {
   if (!req.isAuthenticated() || req.user.role !== 'admin') {
     return res.status(403).json({ message: "Admin access required" });
   }
   next();
 }
 
-// Add error handler middleware
-function asyncHandler(fn: Function) {
-  return (req: any, res: any, next: any) => {
+// Enhanced asyncHandler with proper types
+function asyncHandler<T = any>(fn: (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => Promise<T>) {
+  return (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
@@ -89,7 +97,7 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication routes
   setupAuth(app);
 
-  app.post("/api/auth/register", async (req, res, next) => {
+  app.post("/api/auth/register", async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
     try {
       // Check for existing username
       const existingUserByUsername = await storage.getUserByUsername(req.body.username);
@@ -122,7 +130,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Log the user in automatically
-      req.login(user, (err) => {
+      req.login(user, (err: any) => {
         if (err) {
           console.error("Login error after registration:", err);
           return res.status(500).json({ message: "User created but login failed" });
@@ -132,7 +140,7 @@ export function registerRoutes(app: Express): Server {
         const { password, ...userResponse } = user;
         res.status(201).json(userResponse);
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Registration error:", error);
       res.status(500).json({ message: "Internal server error during registration" });
     }

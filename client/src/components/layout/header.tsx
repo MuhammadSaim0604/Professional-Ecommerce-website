@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  ShoppingCart, 
-  Heart, 
-  User, 
-  Search, 
-  Menu, 
-  Sun, 
-  Moon, 
+import {
+  ShoppingCart,
+  Heart,
+  User,
+  Search,
+  Menu,
+  Sun,
+  Moon,
   LogOut,
   Settings,
-  Package
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,12 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/theme-provider";
-import { Avatar, AvatarFallback, AvatarImage, AvatarInitials } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  AvatarInitials,
+} from "@/components/ui/avatar";
 import { SearchOverlay } from "@/components/search-overlay";
 
 export function Header() {
@@ -73,19 +78,21 @@ export function Header() {
   };
 
   const cartItemsCount = Array.isArray(cartItems) ? cartItems.length : 0;
-  const wishlistItemsCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
+  const wishlistItemsCount = Array.isArray(wishlistItems)
+    ? wishlistItems.length
+    : 0;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <div 
+          <div
             className="flex items-center space-x-2 cursor-pointer"
             onClick={() => navigate("/")}
           >
             {editorSettings?.siteLogo ? (
-              <img 
+              <img
                 src={editorSettings.siteLogo}
                 alt="Site Logo"
                 className="h-10 w-auto object-contain"
@@ -100,13 +107,15 @@ export function Header() {
 
           {/* Search Bar - Desktop */}
           <div className="hidden md:flex flex-1 max-w-md mx-8">
-            <div 
+            <div
               className="flex w-full cursor-pointer"
               onClick={() => setIsDesktopSearchOpen(true)}
             >
               <div className="flex-1 px-4 py-2 border border-input rounded-l-md bg-background hover:bg-accent/50 transition-colors flex items-center">
                 <Search className="h-4 w-4 mr-3 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Search products...</span>
+                <span className="text-sm text-muted-foreground">
+                  Search products...
+                </span>
               </div>
               <Button className="rounded-l-none border-l-0">
                 <Search className="h-4 w-4" />
@@ -182,13 +191,16 @@ export function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
-                      <Avatar>
-                          {user.avatar ? (
-                              <AvatarImage src={user.avatar} alt={user.firstName} />
-                          ) : (
-                              <AvatarFallback>{user.firstName[0]}{user.lastName[0]}</AvatarFallback>
-                          )}
-                      </Avatar>
+                    <Avatar>
+                      {user.avatar ? (
+                        <AvatarImage src={user.avatar} alt={user.firstName} />
+                      ) : (
+                        <AvatarFallback>
+                          {user.firstName[0]}
+                          {user.lastName[0]}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -228,9 +240,7 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={() => navigate("/auth")}>
-                Sign In
-              </Button>
+              <Button onClick={() => navigate("/auth")}>Sign In</Button>
             )}
 
             {/* Mobile Menu */}
@@ -244,8 +254,6 @@ export function Header() {
                 <SheetHeader>
                   <SheetTitle>Menu</SheetTitle>
                 </SheetHeader>
-
-
 
                 {/* Mobile Navigation */}
                 <nav className="mt-6 space-y-4">
@@ -329,7 +337,7 @@ export function Header() {
         onClose={() => setIsMobileSearchOpen(false)}
         variant="mobile"
       />
-      
+
       <SearchOverlay
         isOpen={isDesktopSearchOpen}
         onClose={() => setIsDesktopSearchOpen(false)}

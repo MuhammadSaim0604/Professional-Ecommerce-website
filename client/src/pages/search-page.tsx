@@ -348,18 +348,66 @@ export default function SearchPage() {
     }
   };
 
-  // Infinite scroll functionality
+  // Enhanced Intersection Observer for both desktop and mobile
+  const loadTriggerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || isLoadingMore || !hasMore) {
-        return;
+    if (!loadTriggerRef.current || !hasMore || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasMore && !isLoadingMore) {
+          loadMoreProducts();
+        }
+      },
+      {
+        // More aggressive trigger for mobile - 300px for mobile, 200px for desktop
+        rootMargin: window.innerWidth < 768 ? '300px' : '200px',
+        threshold: 0.1 // Slightly higher threshold for better detection
       }
-      loadMoreProducts();
+    );
+
+    observer.observe(loadTriggerRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, isLoadingMore, products.length]);
+
+  // Enhanced scroll-based infinite scroll optimized for mobile
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    
+    const handleScroll = () => {
+      // Clear previous timeout to avoid rapid calls
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      
+      scrollTimeout = setTimeout(() => {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = window.innerHeight;
+        
+        // Calculate scroll percentage
+        const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+        
+        // More aggressive trigger for mobile - 75% for mobile, 80% for desktop
+        const triggerPoint = window.innerWidth < 768 ? 0.75 : 0.8;
+        
+        if (scrollPercentage >= triggerPoint && !isLoadingMore && hasMore) {
+          loadMoreProducts();
+        }
+      }, 100); // Debounce scroll events
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLoadingMore, hasMore]);
+    // Use passive event listener for better performance on mobile
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+    };
+  }, [isLoadingMore, hasMore, products.length]);
 
   const clearFilters = () => {
     setFilters(prev => ({
@@ -738,30 +786,102 @@ export default function SearchPage() {
                   ))}
                 </div>
 
-                {/* Load More Button */}
-                {hasMore && !productsLoading && (
-                  <div className="flex justify-center mt-8">
+                {/* Intersection Observer Load Trigger - positioned before loading content */}
+                {hasMore && !isLoadingMore && (
+                  <div 
+                    ref={loadTriggerRef} 
+                    className="h-8 w-full flex items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    <div className="text-xs text-muted-foreground opacity-50">
+                      Scroll for more products...
+                    </div>
+                  </div>
+                )}
+
+                {/* Professional Loading Animation */}
+                {isLoadingMore && (
+                  <div className="mt-8">
+                    {/* Professional Loader */}
+                    <div className="flex flex-col items-center mb-8">
+                      <div className="relative">
+                        {/* Multi-layer spinning loader */}
+                        <div className="w-16 h-16 relative">
+                          {/* Outer ring */}
+                          <div className="absolute inset-0 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
+                          {/* Primary spinner */}
+                          <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 border-r-blue-400 rounded-full animate-spin"></div>
+                          {/* Secondary spinner */}
+                          <div className="absolute inset-2 border-2 border-transparent border-b-purple-500 border-l-purple-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                          {/* Center pulsing dot */}
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Clean loading text */}
+                      <div className="mt-6 text-center">
+                        <div className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Loading more results
+                          <span className="animate-bounce inline-block ml-1">.</span>
+                          <span className="animate-bounce inline-block ml-0.5" style={{ animationDelay: '0.2s' }}>.</span>
+                          <span className="animate-bounce inline-block ml-0.5" style={{ animationDelay: '0.4s' }}>.</span>
+                        </div>
+                        <div className="w-24 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Skeleton Cards */}
+                    <div className={`grid gap-4 ${
+                      viewMode === 'grid' 
+                        ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' 
+                        : 'grid-cols-1'
+                    }`}>
+                      {Array.from({ length: itemsPerPage }).map((_, i) => (
+                        <Card key={`skeleton-${currentPage}-${i}`} className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
+                          <div className="relative">
+                            <Skeleton className="h-32 md:h-48 w-full" />
+                            {/* Advanced shimmer effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 dark:via-gray-400/20 to-transparent -translate-x-full animate-pulse" style={{ animationDuration: '1.5s', animationIterationCount: 'infinite' }}></div>
+                          </div>
+                          <CardContent className="p-3 md:p-4 space-y-3">
+                            <Skeleton className="h-3 w-12 rounded-full" />
+                            <Skeleton className="h-4 w-full rounded" />
+                            <Skeleton className="h-3 w-3/4 rounded" />
+                            <Skeleton className="h-5 w-16 rounded-full" />
+                          </CardContent>
+                          {/* Card shimmer overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/10 dark:via-blue-400/5 to-transparent -translate-x-full animate-pulse" style={{ animationDuration: '2s', animationDelay: `${i * 0.1}s` }}></div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Load More Button (fallback for users who prefer clicking) */}
+                {hasMore && !isLoadingMore && (
+                  <div className="text-center mt-8">
                     <Button
                       variant="outline"
                       onClick={loadMoreProducts}
-                      disabled={isLoadingMore}
-                      className="px-8"
+                      className="px-6 py-2"
                     >
-                      {isLoadingMore ? 'Loading...' : 'Load More Products'}
+                      Load More Results
+                      <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
                 )}
 
-                {/* Loading More Skeleton */}
-                {isLoadingMore && (
-                  <div className={`grid gap-4 mt-6 ${
-                    viewMode === 'grid' 
-                      ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' 
-                      : 'grid-cols-1'
-                  }`}>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <ProductCardSkeleton key={`loading-${i}`} />
-                    ))}
+                {/* No More Results Message */}
+                {!hasMore && products.length > 0 && (
+                  <div className="text-center mt-8 py-4">
+                    <p className="text-muted-foreground text-sm">
+                      You've reached the end of search results
+                    </p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      Showing {products.length} results total
+                    </p>
                   </div>
                 )}
               </>

@@ -43,9 +43,17 @@ const upload = multer({
   }
 });
 
-// Helper function for async error handling
-function asyncHandler(fn: Function) {
-  return (req: any, res: any, next: any) => {
+// Enhanced types for authenticated requests
+interface AuthenticatedRequest extends express.Request {
+  isAuthenticated: () => boolean;
+  user?: any;
+  login: (user: any, callback: (err: any) => void) => void;
+  session?: any;
+}
+
+// Helper function for async error handling with proper types
+function asyncHandler<T = any>(fn: (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => Promise<T>) {
+  return (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
@@ -61,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HEALTH & UTILITY ROUTES (Public)
   // ============================================================================
   
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", (req: express.Request, res: express.Response) => {
     res.json({
       success: true,
       message: "ShopFlow API is running",
@@ -70,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  app.get("/api/csrf-token", (req, res) => {
+  app.get("/api/csrf-token", (req: AuthenticatedRequest, res: express.Response) => {
     const token = generateCSRFToken();
     (req.session as any).csrfToken = token;
     res.json({ success: true, token });
@@ -824,6 +832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     })
   );
+
   
   // Order Management (Admin)
   app.get("/api/admin/orders", 

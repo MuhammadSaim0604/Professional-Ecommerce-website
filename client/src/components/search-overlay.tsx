@@ -12,6 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
+import { gsap } from "gsap";
+import { overlayAnimations, animateIn, setInitialState } from "@/lib/gsap-animations";
 
 interface SearchSuggestion {
   id: number;
@@ -40,6 +42,9 @@ export function SearchOverlay({
   const [query, setQuery] = useState(initialQuery);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const popularSearches = [
     "iPhone",
@@ -67,18 +72,6 @@ export function SearchOverlay({
     setQuery(initialQuery);
   }, [initialQuery]);
 
-  // Focus input when opened and select all text if there's an initial query
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-        if (initialQuery) {
-          inputRef.current?.select();
-        }
-      }, 100);
-    }
-  }, [isOpen, initialQuery]);
-
   // Search suggestions query
   const { data: suggestions = [], isLoading } = useQuery({
     queryKey: ["/api/search/suggestions", query],
@@ -89,6 +82,55 @@ export function SearchOverlay({
     enabled: query.length >= 2,
     staleTime: 30000,
   });
+
+  // Animate overlay entrance and exit
+  useEffect(() => {
+    if (isOpen && overlayRef.current && contentRef.current) {
+      // Set initial states
+      gsap.set(overlayRef.current, { opacity: 0 });
+      gsap.set(contentRef.current, { y: 50, opacity: 0, scale: 0.95 });
+      
+      // Animate in
+      const tl = gsap.timeline();
+      tl.to(overlayRef.current, { 
+        opacity: 1, 
+        duration: 0.3, 
+        ease: "power2.out" 
+      })
+      .to(contentRef.current, { 
+        y: 0, 
+        opacity: 1, 
+        scale: 1, 
+        duration: 0.4, 
+        ease: "back.out(1.7)" 
+      }, "-=0.1");
+      
+      // Focus input after animation
+      setTimeout(() => {
+        inputRef.current?.focus();
+        if (initialQuery) {
+          inputRef.current?.select();
+        }
+      }, 200);
+    }
+  }, [isOpen, initialQuery]);
+
+  // Animate search results
+  useEffect(() => {
+    if (suggestions.length > 0 && resultsRef.current) {
+      const items = resultsRef.current.querySelectorAll('.search-result-item');
+      gsap.fromTo(items, 
+        { opacity: 0, y: 20 },
+        { 
+          opacity: 1, 
+          y: 0, 
+          duration: 0.3, 
+          stagger: 0.05, 
+          ease: "power2.out" 
+        }
+      );
+    }
+  }, [suggestions]);
 
   const handleSearch = (searchTerm: string) => {
     if (!searchTerm.trim()) return;
@@ -126,8 +168,29 @@ export function SearchOverlay({
   };
 
   const handleClose = () => {
-    setQuery("");
-    onClose();
+    // Animate out before closing
+    if (overlayRef.current && contentRef.current) {
+      const tl = gsap.timeline();
+      tl.to(contentRef.current, { 
+        y: 50, 
+        opacity: 0, 
+        scale: 0.95, 
+        duration: 0.3, 
+        ease: "power2.in" 
+      })
+      .to(overlayRef.current, { 
+        opacity: 0, 
+        duration: 0.2, 
+        ease: "power2.in",
+        onComplete: () => {
+          setQuery("");
+          onClose();
+        }
+      }, "-=0.1");
+    } else {
+      setQuery("");
+      onClose();
+    }
   };
 
   if (variant === "desktop") {
@@ -135,13 +198,15 @@ export function SearchOverlay({
       <>
         {isOpen && (
           <div
+            ref={overlayRef}
             className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm"
             onClick={handleClose}
           />
         )}
         <div
-          className={`fixed top-0 left-0 right-0 z-[60] h-[80vh] bg-background dark:bg-background border-b border-border shadow-2xl transition-transform duration-300 ${
-            isOpen ? "translate-y-0" : "-translate-y-full"
+          ref={contentRef}
+          className={`fixed top-0 left-0 right-0 z-[60] h-[80vh] bg-background dark:bg-background border-b border-border shadow-2xl ${
+            isOpen ? "block" : "hidden"
           }`}
         >
           <div className="h-full flex flex-col">
@@ -201,14 +266,14 @@ export function SearchOverlay({
                           <h4 className="font-semibold mb-4 text-base text-foreground dark:text-foreground">
                             Search Results
                           </h4>
-                          <div className="space-y-3">
+                          <div ref={resultsRef} className="space-y-3">
                             {suggestions.map((suggestion: SearchSuggestion) => (
                               <button
                                 key={`${suggestion.type}-${suggestion.id}`}
                                 onClick={() =>
                                   handleSuggestionClick(suggestion)
                                 }
-                                className="w-full p-3 hover:bg-muted/50 dark:hover:bg-muted/30 rounded-xl text-left flex items-center space-x-3 transition-colors border border-transparent hover:border-border shadow-sm hover:shadow-md"
+                                className="search-result-item w-full p-3 hover:bg-muted/50 dark:hover:bg-muted/30 rounded-xl text-left flex items-center space-x-3 transition-colors border border-transparent hover:border-border shadow-sm hover:shadow-md"
                               >
                                 <div className="flex-shrink-0">
                                   {suggestion.type === "category" ? (

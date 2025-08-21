@@ -42,6 +42,8 @@ import { DarazStyleFlashSale } from "@/components/DarazStyleFlashSale";
 import { useState, useEffect, useRef } from "react";
 import { useSiteName } from "@/hooks/use-site-name";
 import { useDocumentTitle } from "@/hooks/use-document-title";
+import { gsap } from "gsap";
+import { animateIn, hoverAnimations, setInitialState } from "@/lib/gsap-animations";
 
 interface Product {
   id: number;
@@ -105,6 +107,12 @@ export default function AdvancedHomePage() {
   const categoriesPerPage = 6;
   const autoSlideInterval = useRef<NodeJS.Timeout | null>(null);
   const [carouselApi, setCarouselApi] = useState<any>(); // Carousel API state
+  
+  // Animation refs
+  const heroRef = useRef<HTMLDivElement>(null);
+  const featuredRef = useRef<HTMLDivElement>(null);
+  const flashSalesRef = useRef<HTMLDivElement>(null);
+  const categoriesRef = useRef<HTMLDivElement>(null);
 
   // Fetch banners
   const { data: banners = [], isLoading: bannersLoading } = useQuery<Banner[]>({
@@ -146,11 +154,20 @@ export default function AdvancedHomePage() {
     },
   });
 
+  // State for infinite scroll
+  const [allProductsPage, setAllProductsPage] = useState(1);
+  const [allProductsList, setAllProductsList] = useState<Product[]>([]);
+  const [hasMoreProducts, setHasMoreProducts] = useState(true);
+  const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
+  const itemsPerPageProducts = 12;
+  const loadTriggerRef = useRef<HTMLDivElement>(null);
+
   // Fetch all products with proper typing
   const { data: allProductsData, isLoading: allProductsLoading } = useQuery({
-    queryKey: ["/api/products", "all"],
+    queryKey: ["/api/products", "all", allProductsPage],
     queryFn: async () => {
-      const response = await fetch("/api/products?limit=12");
+      const offset = (allProductsPage - 1) * itemsPerPageProducts;
+      const response = await fetch(`/api/products?limit=${itemsPerPageProducts}&offset=${offset}`);
       return response.json();
     },
   });
@@ -164,11 +181,24 @@ export default function AdvancedHomePage() {
     },
   });
 
+  // Handle infinite scroll data management for All Products
+  useEffect(() => {
+    if (allProductsData?.products) {
+      if (allProductsPage === 1) {
+        setAllProductsList(allProductsData.products);
+      } else {
+        setAllProductsList(prev => [...prev, ...allProductsData.products]);
+      }
+      setHasMoreProducts(allProductsData.products.length === itemsPerPageProducts);
+      setIsLoadingMoreProducts(false);
+    }
+  }, [allProductsData, allProductsPage]);
+
   // Extract products from API responses
   const featuredProducts = featuredData?.products || [];
   const latestProducts = latestData?.products || [];
   const trendingProducts = trendingData?.products || [];
-  const allProducts = allProductsData?.products || [];
+  const allProducts = allProductsList;
 
   // Fetch categories
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -327,6 +357,116 @@ export default function AdvancedHomePage() {
     addToWishlistMutation.mutate(productId);
   };
 
+  const loadMoreAllProducts = () => {
+    if (!isLoadingMoreProducts && hasMoreProducts) {
+      setIsLoadingMoreProducts(true);
+      setAllProductsPage(prev => prev + 1);
+    }
+  };
+
+  // Page entrance animations
+  useEffect(() => {
+    const animatePageElements = () => {
+      // Animate hero section
+      if (heroRef.current) {
+        animateIn.fadeIn(heroRef.current, 0.8, 0);
+      }
+      
+      // Animate featured products section
+      if (featuredRef.current && featuredProducts && featuredProducts.length > 0) {
+        setTimeout(() => {
+          const cards = featuredRef.current?.querySelectorAll('.product-card');
+          if (cards) {
+            animateIn.stagger(Array.from(cards) as HTMLElement[], 0.5, 0.1);
+          }
+        }, 300);
+      }
+
+      // Animate flash sales section
+      if (flashSalesRef.current && flashSales && flashSales.length > 0) {
+        setTimeout(() => {
+          const cards = flashSalesRef.current?.querySelectorAll('.flash-sale-card');
+          if (cards) {
+            animateIn.stagger(Array.from(cards) as HTMLElement[], 0.5, 0.1);
+          }
+        }, 600);
+      }
+
+      // Animate categories section
+      if (categoriesRef.current && categories && (categories as Category[]).length > 0) {
+        setTimeout(() => {
+          const cards = categoriesRef.current?.querySelectorAll('.category-card');
+          if (cards) {
+            animateIn.stagger(Array.from(cards) as HTMLElement[], 0.5, 0.08);
+          }
+        }, 900);
+      }
+    };
+
+    // Start animations after a small delay to ensure DOM is ready
+    const timer = setTimeout(animatePageElements, 100);
+    return () => clearTimeout(timer);
+  }, [featuredProducts, flashSales, categories]);
+
+  // Enhanced Intersection Observer for both desktop and mobile
+  useEffect(() => {
+    if (!loadTriggerRef.current || !hasMoreProducts || isLoadingMoreProducts) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasMoreProducts && !isLoadingMoreProducts) {
+          loadMoreAllProducts();
+        }
+      },
+      {
+        // More aggressive trigger for mobile - 300px for mobile, 200px for desktop
+        rootMargin: window.innerWidth < 768 ? '300px' : '200px',
+        threshold: 0.1 // Slightly higher threshold for better detection
+      }
+    );
+
+    observer.observe(loadTriggerRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreProducts, isLoadingMoreProducts, allProducts.length]);
+
+  // Enhanced scroll-based infinite scroll optimized for mobile
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    
+    const handleScroll = () => {
+      // Clear previous timeout to avoid rapid calls
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      
+      scrollTimeout = setTimeout(() => {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = window.innerHeight;
+        
+        // Calculate scroll percentage
+        const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+        
+        // More aggressive trigger for mobile - 75% for mobile, 80% for desktop
+        const triggerPoint = window.innerWidth < 768 ? 0.75 : 0.8;
+        
+        if (scrollPercentage >= triggerPoint && !isLoadingMoreProducts && hasMoreProducts) {
+          loadMoreAllProducts();
+        }
+      }, 100); // Debounce scroll events
+    };
+
+    // Use passive event listener for better performance on mobile
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+    };
+  }, [isLoadingMoreProducts, hasMoreProducts, allProducts.length]);
+
   const ProductCard = ({
     product,
     isFlashSale = false,
@@ -337,7 +477,7 @@ export default function AdvancedHomePage() {
     discount?: string;
   }) => (
     <Card
-      className="group hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer"
+      className="product-card group hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer"
       onClick={() => navigate(`/products/${product.slug}`)}
     >
       <div className="relative overflow-hidden">
@@ -430,7 +570,7 @@ export default function AdvancedHomePage() {
 
     return (
       <Card
-        className="group hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+        className="flash-sale-card group hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
         onClick={() => navigate(`/products/${product.slug}`)}
       >
         <div className="relative overflow-hidden">
@@ -482,7 +622,7 @@ export default function AdvancedHomePage() {
 
   const CategoryCard = ({ category }: { category: Category }) => (
     <Card
-      className="group cursor-pointer hover:shadow-lg transition-all duration-300"
+      className="category-card group cursor-pointer hover:shadow-lg transition-all duration-300"
       onClick={() => navigate(`/category/${category.id}`)}
     >
       <CardContent className="p-6 text-center">
@@ -577,7 +717,7 @@ export default function AdvancedHomePage() {
       {bannersLoading ? (
         <Skeleton className="h-96 w-full" />
       ) : banners.length > 0 ? (
-        <div className="relative h-96 overflow-hidden">
+        <div ref={heroRef} className="relative h-96 overflow-hidden">
           {banners.map((banner, index) => (
             <div
               key={banner.id}
@@ -692,7 +832,7 @@ export default function AdvancedHomePage() {
 
       <div className="container mx-auto px-4 py-12 space-y-16">
         {/* Categories Section */}
-        <section className="relative">
+        <section ref={categoriesRef} className="relative">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between mb-8">
             <div>
@@ -965,10 +1105,12 @@ export default function AdvancedHomePage() {
         </section>
 
         {/* Flash Sale Section */}
-        <DarazStyleFlashSale />
+        <div ref={flashSalesRef}>
+          <DarazStyleFlashSale />
+        </div>
 
         {/* Featured Products Section */}
-        <section style={{ marginTop: "15px" }} className="mt-4 sm:mt-6 md:mt-8 md:px-[70px]">
+        <section ref={featuredRef} style={{ marginTop: "15px" }} className="mt-4 sm:mt-6 md:mt-8 md:px-[70px]">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="bg-yellow-500 p-2 rounded">
@@ -1022,9 +1164,9 @@ export default function AdvancedHomePage() {
                 id="featured-scroll"
                 className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide pr-8 md:pl-6 md:pr-12"
               >
-                {featuredProducts.map((product: Product) => (
+                {featuredProducts.map((product: Product, index: number) => (
                   <div
-                    key={product.id}
+                    key={`featured-${product.id}-${index}`}
                     className="flex-shrink-0 w-32 sm:w-36 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => navigate(`/products/${product.slug}`)}
                   >
@@ -1180,9 +1322,9 @@ export default function AdvancedHomePage() {
                 id="newarrivals-scroll"
                 className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide pr-8 md:pl-6 md:pr-12"
               >
-                {latestProducts.map((product: Product) => (
+                {latestProducts.map((product: Product, index: number) => (
                   <div
-                    key={product.id}
+                    key={`latest-${product.id}-${index}`}
                     className="flex-shrink-0 w-32 sm:w-36 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => navigate(`/products/${product.slug}`)}
                   >
@@ -1311,14 +1453,111 @@ export default function AdvancedHomePage() {
             </Button>
           </div>
 
-          {allProductsLoading ? (
+          {allProductsLoading && allProductsPage === 1 ? (
             <LoadingSkeleton />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 md:gap-1">
-              {allProducts.map((product: Product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 md:gap-1">
+                {allProducts.map((product: Product, index: number) => (
+                  <ProductCard key={`all-product-${product.id}-${allProductsPage}-${index}`} product={product} />
+                ))}
+              </div>
+
+              {/* Intersection Observer Load Trigger - positioned before loading content */}
+              {hasMoreProducts && !isLoadingMoreProducts && (
+                <div 
+                  ref={loadTriggerRef} 
+                  className="h-8 w-full flex items-center justify-center"
+                  aria-hidden="true"
+                >
+                  <div className="text-xs text-muted-foreground opacity-50">
+                    Scroll for more products...
+                  </div>
+                </div>
+              )}
+
+              {/* Professional Loading Animation */}
+              {isLoadingMoreProducts && (
+                <div className="mt-8">
+                  {/* Professional Loader */}
+                  <div className="flex flex-col items-center mb-8">
+                    <div className="relative">
+                      {/* Multi-layer spinning loader */}
+                      <div className="w-16 h-16 relative">
+                        {/* Outer ring */}
+                        <div className="absolute inset-0 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
+                        {/* Primary spinner */}
+                        <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 border-r-blue-400 rounded-full animate-spin"></div>
+                        {/* Secondary spinner */}
+                        <div className="absolute inset-2 border-2 border-transparent border-b-purple-500 border-l-purple-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                        {/* Center pulsing dot */}
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Clean loading text */}
+                    <div className="mt-6 text-center">
+                      <div className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Loading more products
+                        <span className="animate-bounce inline-block ml-1">.</span>
+                        <span className="animate-bounce inline-block ml-0.5" style={{ animationDelay: '0.2s' }}>.</span>
+                        <span className="animate-bounce inline-block ml-0.5" style={{ animationDelay: '0.4s' }}>.</span>
+                      </div>
+                      <div className="w-24 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Skeleton Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 md:gap-1">
+                    {Array.from({ length: itemsPerPageProducts }).map((_, i) => (
+                      <Card key={`skeleton-${allProductsPage}-${i}`} className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
+                        <div className="relative">
+                          <Skeleton className="h-32 md:h-48 w-full" />
+                          {/* Advanced shimmer effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 dark:via-gray-400/20 to-transparent -translate-x-full animate-pulse" style={{ animationDuration: '1.5s', animationIterationCount: 'infinite' }}></div>
+                        </div>
+                        <CardContent className="p-3 md:p-4 space-y-3">
+                          <Skeleton className="h-3 w-12 rounded-full" />
+                          <Skeleton className="h-4 w-full rounded" />
+                          <Skeleton className="h-3 w-3/4 rounded" />
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                        </CardContent>
+                        {/* Card shimmer overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/10 dark:via-blue-400/5 to-transparent -translate-x-full animate-pulse" style={{ animationDuration: '2s', animationDelay: `${i * 0.1}s` }}></div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Load More Button (fallback for users who prefer clicking) */}
+              {hasMoreProducts && !isLoadingMoreProducts && (
+                <div className="text-center mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreAllProducts}
+                    className="px-6 py-2"
+                  >
+                    Load More Products
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* No More Products Message */}
+              {!hasMoreProducts && allProducts.length > 0 && (
+                <div className="text-center mt-8 py-4">
+                  <p className="text-muted-foreground text-sm">
+                    You've reached the end of our products collection
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Showing {allProducts.length} products total
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </section>
       </div>

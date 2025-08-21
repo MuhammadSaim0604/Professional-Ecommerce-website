@@ -139,7 +139,7 @@ export class OrderCalculator {
         discountValue: discount.toString(),
         applyToShipping: coupon.applyToShipping || false,
         applyToTax: coupon.applyToTax || false,
-        description: coupon.description
+        description: coupon.description || undefined
       } : undefined,
       settings,
       freeShippingEligible,
