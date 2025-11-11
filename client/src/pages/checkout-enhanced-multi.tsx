@@ -1054,7 +1054,7 @@ export default function CheckoutEnhancedMulti() {
         </DialogContent>
       </Dialog>
 
-      <Footer />
+
     </div>
   );
 }
