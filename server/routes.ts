@@ -103,9 +103,9 @@ function asyncHandler<T = any>(fn: (req: AuthenticatedRequest, res: Response, ne
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
-  
+
   // WebSocket functionality removed - using HTTP-only approach
-  
+
   // Add performance middleware
   setupPerformanceMiddleware(app);
   app.use(requestTimer);
@@ -261,8 +261,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Hash new password and update
     const hashedPassword = await hashPassword(newPassword);
-    const updatedUser = await storage.updateUser(req.user.id, { 
-      password: hashedPassword 
+    const updatedUser = await storage.updateUser(req.user.id, {
+      password: hashedPassword
     });
 
     res.json({ message: "Password updated successfully" });
@@ -340,10 +340,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
 
     const category = await storage.createCategory(processedData);
-    
+
     // Broadcast real-time event
     // Cache invalidation for HTTP-only approach
-    
+
     res.status(201).json(category);
   }));
 
@@ -392,26 +392,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const category = await storage.updateCategory(id, updates);
 
       if (!category) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          message: "Category not found" 
+          message: "Category not found"
         });
       }
 
       // Broadcast real-time event
       // Cache invalidation for HTTP-only approach
 
-      res.json({ 
+      res.json({
         success: true,
         message: "Category updated successfully",
-        data: category 
+        data: category
       });
     } catch (error) {
       console.error('Category update error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Failed to update category",
-        error: error.message 
+        error: error.message
       });
     }
   }));
@@ -570,8 +570,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const formattedProduct = {
       ...product,
       category,
-      imageUrl: product.images && Array.isArray(product.images) && product.images.length > 0 
-        ? product.images[0] 
+      imageUrl: product.images && Array.isArray(product.images) && product.images.length > 0
+        ? product.images[0]
         : '/api/placeholder/600/600',
       price: product.price ? product.price.toString() : '0',
       salePrice: product.salePrice ? product.salePrice.toString() : undefined,
@@ -623,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let processedTags = [];
     if (productData.tags) {
       try {
-        processedTags = typeof productData.tags === 'string' ? 
+        processedTags = typeof productData.tags === 'string' ?
           JSON.parse(productData.tags) : productData.tags;
       } catch {
         processedTags = productData.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0);
@@ -681,14 +681,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
 
     const product = await storage.createProduct(processedData);
-    
+
     // Real-time update logging for HTTP-only approach
     console.log('📦 Product created successfully:', product.name, `(ID: ${product.id})`);
-    
+
     // Force cache invalidation by updating response headers
     res.set('X-Product-Updated', Date.now().toString());
     res.set('X-Cache-Invalidate', 'products,featured,new-arrivals,flash-sale');
-    
+
     res.status(201).json(product);
   }));
 
@@ -785,7 +785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Real-time update logging for HTTP-only approach
     console.log('✏️ Product updated (PUT):', product.name, `(ID: ${product.id})`);
-    
+
     // Force cache invalidation by updating response headers
     res.set('X-Product-Updated', Date.now().toString());
     res.set('X-Cache-Invalidate', 'products,featured,new-arrivals,flash-sale');
@@ -905,7 +905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Real-time update logging for HTTP-only approach  
     console.log('✏️ Product updated successfully:', product.name, `(ID: ${product.id})`);
-    
+
     // Force cache invalidation by updating response headers
     res.set('X-Product-Updated', Date.now().toString());
     res.set('X-Cache-Invalidate', 'products,featured,new-arrivals,flash-sale');
@@ -929,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Real-time deletion logging for HTTP-only approach
       console.log('🗑️ Product deleted:', id);
-      
+
       // Force cache invalidation by updating response headers
       res.set('X-Product-Updated', Date.now().toString());
       res.set('X-Cache-Invalidate', 'products,featured,new-arrivals,flash-sale');
@@ -957,11 +957,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Real-time bulk deletion logging for HTTP-only approach
       console.log('🗑️ Bulk products deleted:', deletedCount, 'products');
-      
+
       // Force cache invalidation for bulk operations
       res.set('X-Product-Updated', Date.now().toString());
       res.set('X-Cache-Invalidate', 'products,featured,new-arrivals,flash-sale');
-      
+
       res.json({ message: `${deletedCount} products deleted successfully` });
     } catch (error: any) {
       console.error('Bulk delete error:', error);
@@ -985,11 +985,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Real-time bulk update logging for HTTP-only approach
       console.log('✏️ Bulk products updated:', updatedCount, 'products');
-      
+
       // Force cache invalidation for bulk operations
       res.set('X-Product-Updated', Date.now().toString());
       res.set('X-Cache-Invalidate', 'products,featured,new-arrivals,flash-sale');
-      
+
       res.json({ message: `${updatedCount} products updated successfully` });
     } catch (error: any) {
       console.error('Bulk update error:', error);
@@ -1345,8 +1345,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (coupon.minimumAmount && subtotalAmount < parseFloat(coupon.minimumAmount)) {
-        return res.status(400).json({ 
-          message: `Minimum order amount of PKR ${coupon.minimumAmount} required for this coupon` 
+        return res.status(400).json({
+          message: `Minimum order amount of PKR ${coupon.minimumAmount} required for this coupon`
         });
       }
 
@@ -1470,9 +1470,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast real-time event
       // Cache invalidation for HTTP-only approach
-      
-      res.status(201).json({ 
-        order: result.order, 
+
+      res.status(201).json({
+        order: result.order,
         calculation: result.calculation,
         message: "Order created successfully"
       });
@@ -1505,9 +1505,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: 'awaiting_confirmation'
     });
 
-    res.json({ 
+    res.json({
       message: "Payment proof uploaded successfully. Waiting for admin approval.",
-      order: updatedOrder 
+      order: updatedOrder
     });
   }));
 
@@ -1528,7 +1528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Broadcast real-time event
     // Cache invalidation for HTTP-only approach
-    
+
     res.json({ message: "Payment approved successfully", order: updatedOrder });
   }));
 
@@ -1550,7 +1550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Broadcast real-time event
     // Cache invalidation for HTTP-only approach
-    
+
     res.json({ message: "Payment rejected", order: updatedOrder });
   }));
 
@@ -1892,8 +1892,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     // Only return necessary fields, not sensitive internal data
-    res.json({ 
-      valid: true, 
+    res.json({
+      valid: true,
       coupon: {
         code: coupon.code,
         discountType: coupon.discountType,
@@ -1944,7 +1944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Get original order items
     const orderItems = await storage.getOrderItems(originalOrder.id);
-    
+
     if (!orderItems || orderItems.length === 0) {
       return res.status(400).json({ message: "Original order has no items" });
     }
@@ -1956,7 +1956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!product) {
         return res.status(400).json({ message: `Product ${item.productId} is no longer available` });
       }
-      
+
       if (product.stock < item.quantity) {
         return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
       }
@@ -1985,8 +1985,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         null
       );
 
-      res.status(201).json({ 
-        order: result.order, 
+      res.status(201).json({
+        order: result.order,
         calculation: result.calculation,
         message: "Order placed successfully"
       });
@@ -2404,7 +2404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const flashSales = await storage.getActiveFlashSales();
-    const productFlashSale = flashSales.find(sale => 
+    const productFlashSale = flashSales.find(sale =>
       sale.productId === productId || sale.product?.id === productId
     );
 
@@ -2675,7 +2675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Import in dependency order with error handling for each table
-        
+
         if (data.data.users && Array.isArray(data.data.users) && data.data.users.length > 0) {
           console.log(`Importing ${data.data.users.length} users...`);
           importResults.users = await storage.importUsers(data.data.users);
@@ -2765,8 +2765,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Database import error:', error);
-      res.status(500).json({ 
-        message: 'Failed to import database', 
+      res.status(500).json({
+        message: 'Failed to import database',
         error: error.message || 'Unknown error occurred'
       });
     }
@@ -2784,9 +2784,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Database delete error:', error);
-      res.status(500).json({ 
-        message: 'Failed to delete database', 
-        error: error.message 
+      res.status(500).json({
+        message: 'Failed to delete database',
+        error: error.message
       });
     }
   }));
@@ -2827,7 +2827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/system-settings", requireAdmin, asyncHandler(async (req, res) => {
     const settings = await storage.getSystemSettings();
     // Filter out encryption-related settings as they're managed by the encryption control panel
-    const filteredSettings = settings.filter(setting => 
+    const filteredSettings = settings.filter(setting =>
       !setting.key.startsWith('encryption_')
     );
     res.json(filteredSettings);
@@ -2987,16 +2987,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('🔧 Manual product rating recalculation triggered by admin');
     try {
       await storage.recalculateAllProductRatings();
-      res.json({ 
-        success: true, 
-        message: 'Product ratings recalculated successfully' 
+      res.json({
+        success: true,
+        message: 'Product ratings recalculated successfully'
       });
     } catch (error) {
       console.error('❌ Error in manual rating recalculation:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: 'Failed to recalculate product ratings',
-        error: error.message 
+        error: error.message
       });
     }
   }));
@@ -3038,6 +3038,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await Promise.all(promises);
     res.json({ success: true });
   }));
+
+  let pingScheduled: Boolean = false;
+
+  app.get('/ping', (req, res) => {
+    const targetUrl = 'https://password-manager-backend-ym7r.onrender.com/ping';
+
+    if (pingScheduled) {
+      return res.send('Ping already scheduled or sent.');
+    }
+
+    pingScheduled = true;
+
+    setTimeout(() => {
+      fetch(targetUrl, { method: 'GET' })
+        .then(response => console.log(`Pinged ${targetUrl} - status ${response.status}`))
+        .catch(err => console.log('Error pinging target:', err.message));
+    }, 30 * 1000);
+
+    res.send('Ping scheduled to run in 30 seconds.');
+  });
 
   console.log('🚀 Server initialized successfully - ratings will be calculated on demand');
   return server;
