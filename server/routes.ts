@@ -3054,6 +3054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       fetch(targetUrl, { method: 'GET' })
         .then(response => console.log(`Pinged ${targetUrl} - status ${response.status}`))
         .catch(err => console.log('Error pinging target:', err.message));
+      pingScheduled = false;
     }, 30 * 1000);
 
     res.send('Ping scheduled to run in 30 seconds.');
