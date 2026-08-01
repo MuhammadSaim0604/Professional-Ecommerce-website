@@ -1,8 +1,98 @@
 # ShopFlow - Modern eCommerce Platform
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Now-blue?style=for-the-badge&logo=vercel)](https://fb-shoes.vercel.app) [![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen?style=for-the-badge)](https://fb-shoes.vercel.app)
+
 ## Overview
 
-ShopFlow is a full-stack eCommerce platform offering a comprehensive product catalog, user authentication, shopping cart, order management, and an admin dashboard. Its purpose is to provide a robust, scalable, and secure solution for online retail, featuring advanced capabilities like flash sales, wishlist functionality, diverse payment integrations, and complete database export/import functionality. The project aims to deliver a seamless shopping experience for users and efficient management tools for administrators.
+ShopFlow is a premium full-stack eCommerce platform built for modern online retail. It pairs a dynamic product storefront with a secure admin dashboard to help merchants manage products, orders, users, and branding effortlessly.
+
+- Responsive shopping experience for desktop and mobile
+- Secure authentication and session-based access
+- Powerful admin controls for products, users, orders, and site settings
+- Fresh HTTP-only architecture with no caching or WebSocket dependencies
+
+## Live Demo
+
+Explore the live store here:
+
+[https://fb-shoes.vercel.app](https://fb-shoes.vercel.app)
+
+## Key Features
+
+- ✅ Responsive storefront with category browsing, product cards, and mobile UI
+- ✅ Flash sale and featured product support
+- ✅ Cart, wishlist, checkout flow, and order tracking
+- ✅ Payment options: Cash on Delivery, EasyPaisa, JazzCash
+- ✅ Admin dashboard with analytics, product CRUD, user management, and site branding
+- ✅ Secure backend with AES-256-GCM encryption, CSRF protection, and input validation
+- ✅ Database export/import and admin maintenance utilities
+- ✅ Review moderation and manual rating recalculation endpoint
+
+## Why ShopFlow
+
+- **Modern, accessible UI** with polished components and mobile-first design
+- **Real-time search experience** with popular search suggestions and quick results
+- **Clean backend architecture** using Express, Passport, and PostgreSQL
+- **Developer-friendly stack** with TypeScript, Drizzle ORM, and Tailwind CSS
+- **Admin-first features** including branding, export/import, and secure management
+
+## System Architecture
+
+### Frontend
+- React 18 + TypeScript
+- Wouter routing
+- Radix UI + Tailwind CSS
+- React Hook Form + Zod validation
+- TanStack Query for server state
+
+### Backend
+- Express.js + TypeScript
+- Passport.js local authentication
+- PostgreSQL-backed sessions
+- AES-256-GCM encryption for sensitive data
+
+### Database
+- PostgreSQL 16
+- Drizzle ORM + Drizzle Kit
+
+## Recent Improvements
+
+- Enhanced site branding support with logo, favicon, and site title updates
+- Improved mobile layouts, responsive spacing, and search overlay fixes
+- Rebuilt search system for desktop and mobile experiences
+- Fixed category status updates and admin endpoint issues
+- Improved admin UX with loading states and better error handling
+- Removed caching logic and WebSocket dependencies for simpler architecture
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Configure environment variables
+4. Start backend and frontend servers
+
+## Dependencies
+
+- `@neondatabase/serverless`
+- `drizzle-orm`, `drizzle-kit`
+- `passport`, `passport-local`, `bcryptjs`
+- `@radix-ui`, `class-variance-authority`, `tailwindcss`
+- `@tanstack/react-query`
+- `react-hook-form`, `@hookform/resolvers`, `zod`
+- `multer`
+- `recharts`, `chart.js`
+
+## Contact
+
+Visit the live demo and explore the full experience:
+
+[https://fb-shoes.vercel.app](https://fb-shoes.vercel.app)
+
+---
+
+### GitHub Description
+
+**ShopFlow** is a modern full-stack eCommerce platform with a polished live storefront, secure auth, admin dashboard, dynamic branding tools, and PostgreSQL-backed data management. Live demo: https://fb-shoes.vercel.app
 
 ## Recent Changes
 - **Complete Site Branding System (Aug 4, 2025)**: Implemented comprehensive site branding functionality with site logo, favicon, and site name customization. Added database columns (site_logo, favicon, site_name) to editor_settings table, updated backend routes, created admin editor interface with upload sections, and updated header to dynamically display uploaded branding. Site name input is non-blocking with manual save button for better UX.
