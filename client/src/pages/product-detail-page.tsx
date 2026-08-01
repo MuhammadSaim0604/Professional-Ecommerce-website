@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Star, 
-  ShoppingCart, 
-  Heart, 
-  Share2, 
-  Minus, 
+import {
+  Star,
+  ShoppingCart,
+  Heart,
+  Share2,
+  Minus,
   Plus,
   ArrowLeft,
   Shield,
@@ -200,11 +200,10 @@ export default function ProductDetailPage() {
         {Array.from({ length: 5 }).map((_, i) => (
           <Star
             key={i}
-            className={`h-5 w-5 cursor-pointer transition-colors ${
-              i < rating
+            className={`h-5 w-5 cursor-pointer transition-colors ${i < rating
                 ? 'fill-yellow-400 text-yellow-400'
                 : 'text-gray-300 hover:text-yellow-400'
-            }`}
+              }`}
             onClick={() => interactive && onRatingChange && onRatingChange(i + 1)}
           />
         ))}
@@ -250,12 +249,12 @@ export default function ProductDetailPage() {
     );
   }
 
-  const images = product.images && Array.isArray(product.images) 
-    ? product.images 
+  const images = product.images && Array.isArray(product.images)
+    ? product.images
     : [product.imageUrl || '/api/placeholder/600/600'];
 
   const hasDiscount = product.salePrice && parseFloat(product.salePrice) < parseFloat(product.price);
-  const discountPercentage = hasDiscount 
+  const discountPercentage = hasDiscount
     ? Math.round(((parseFloat(product.price) - parseFloat(product.salePrice)) / parseFloat(product.price)) * 100)
     : 0;
 
@@ -294,16 +293,15 @@ export default function ProductDetailPage() {
                 </Badge>
               )}
             </div>
-            
+
             {images.length > 1 && (
               <div className="grid grid-cols-4 gap-4">
                 {images.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`aspect-square rounded-lg overflow-hidden bg-muted border-2 transition-colors ${
-                      selectedImage === index ? 'border-primary' : 'border-transparent'
-                    }`}
+                    className={`aspect-square rounded-lg overflow-hidden bg-muted border-2 transition-colors ${selectedImage === index ? 'border-primary' : 'border-transparent'
+                      }`}
                   >
                     <img
                       src={image}
@@ -331,11 +329,10 @@ export default function ProductDetailPage() {
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
                         key={i}
-                        className={`h-4 w-4 ${
-                          i < Math.floor(product.rating)
+                        className={`h-4 w-4 ${i < Math.floor(product.rating)
                             ? 'fill-yellow-400 text-yellow-400'
                             : 'text-muted-foreground'
-                        }`}
+                          }`}
                       />
                     ))}
                     <span className="text-sm text-muted-foreground">
@@ -472,7 +469,7 @@ export default function ProductDetailPage() {
               <TabsTrigger value="specifications">Specifications</TabsTrigger>
               <TabsTrigger value="reviews">Reviews</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="description" className="mt-8">
               <Card>
                 <CardContent className="p-6">
@@ -486,7 +483,7 @@ export default function ProductDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="specifications" className="mt-8">
               <Card>
                 <CardContent className="p-6">
@@ -512,7 +509,7 @@ export default function ProductDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="reviews" className="mt-8">
               <div className="space-y-6">
                 {/* Review Summary */}
@@ -534,7 +531,7 @@ export default function ProductDetailPage() {
                           <div className="space-y-4 py-4">
                             <div>
                               <Label>Rating</Label>
-                              {renderStars(reviewForm.rating, true, (rating) => 
+                              {renderStars(reviewForm.rating, true, (rating) =>
                                 setReviewForm({ ...reviewForm, rating })
                               )}
                             </div>
@@ -558,13 +555,13 @@ export default function ProductDetailPage() {
                               />
                             </div>
                             <div className="flex justify-end space-x-2">
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 onClick={() => setShowReviewForm(false)}
                               >
                                 Cancel
                               </Button>
-                              <Button 
+                              <Button
                                 onClick={submitReview}
                                 disabled={submitReviewMutation.isPending}
                               >
@@ -586,9 +583,8 @@ export default function ProductDetailPage() {
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`h-3 w-3 md:h-4 md:w-4 ${
-                                    i < Math.floor(Number(product.rating)) ? "fill-current" : ""
-                                  }`}
+                                  className={`h-3 w-3 md:h-4 md:w-4 ${i < Math.floor(Number(product.rating)) ? "fill-current" : ""
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -649,9 +645,8 @@ export default function ProductDetailPage() {
                                           {[...Array(5)].map((_, i) => (
                                             <Star
                                               key={i}
-                                              className={`h-3 w-3 md:h-4 md:w-4 ${
-                                                i < review.rating ? "fill-current" : ""
-                                              }`}
+                                              className={`h-3 w-3 md:h-4 md:w-4 ${i < review.rating ? "fill-current" : ""
+                                                }`}
                                             />
                                           ))}
                                         </div>
@@ -672,12 +667,12 @@ export default function ProductDetailPage() {
                             </div>
                           ))}
                         </div>
-                        
+
                         {/* See More Button */}
                         {reviews.length > visibleReviews && (
                           <div className="text-center mt-4">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               onClick={() => setVisibleReviews(prev => prev + 10)}
                               className="text-orange-500 border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950 text-sm md:text-base px-4 py-2 md:px-6 md:py-3"
                             >
@@ -691,8 +686,8 @@ export default function ProductDetailPage() {
                         <MessageSquare className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-3 md:mb-4 opacity-50" />
                         <p className="text-base md:text-lg font-medium mb-2">No reviews yet</p>
                         <p className="text-sm md:text-base mb-3">Be the first to review this product and help other customers!</p>
-                        <Button 
-                          className="text-sm md:text-base px-4 py-2 md:px-6 md:py-3" 
+                        <Button
+                          className="text-sm md:text-base px-4 py-2 md:px-6 md:py-3"
                           variant="outline"
                           onClick={() => setShowReviewForm(true)}
                         >
@@ -738,7 +733,7 @@ export default function ProductDetailPage() {
                   <CardContent className="p-3 md:p-4">
                     <div className="space-y-2 md:space-y-3">
                       <h3 className="font-semibold text-base line-clamp-2">{relatedProduct.name}</h3>
-                      
+
                       {/* Hide description on mobile, show on desktop */}
                       <p className="hidden md:block text-sm text-muted-foreground line-clamp-2">
                         {relatedProduct.description || "No description available"}
@@ -763,11 +758,10 @@ export default function ProductDetailPage() {
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
-                                className={`h-3 md:h-4 w-3 md:w-4 ${
-                                  i < Math.floor(Number(relatedProduct.rating) || 0)
+                                className={`h-3 md:h-4 w-3 md:w-4 ${i < Math.floor(Number(relatedProduct.rating) || 0)
                                     ? "fill-current"
                                     : ""
-                                }`}
+                                  }`}
                               />
                             ))}
                           </div>
