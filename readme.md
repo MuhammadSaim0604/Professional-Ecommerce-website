@@ -1,6 +1,6 @@
 # ShopFlow - Modern eCommerce Platform
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Now-blue?style=for-the-badge&logo=vercel)](https://fb-shoes.vercel.app) [![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen?style=for-the-badge)](https://fb-shoes.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Now-blue?style=for-the-badge&logo=vercel)](https://shop-flow.up.railway.app) [![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen?style=for-the-badge)](https://shop-flow.up.railway.app)
 
 ## Overview
 
@@ -15,7 +15,9 @@ ShopFlow is a premium full-stack eCommerce platform built for modern online reta
 
 Explore the live store here:
 
-[https://fb-shoes.vercel.app](https://fb-shoes.vercel.app)
+[https://shop-flow.up.railway.app](https://shop-flow.up.railway.app)
+
+![FB SHOES preview](assets/frame.png)
 
 ## Key Features
 
@@ -35,34 +37,6 @@ Explore the live store here:
 - **Clean backend architecture** using Express, Passport, and PostgreSQL
 - **Developer-friendly stack** with TypeScript, Drizzle ORM, and Tailwind CSS
 - **Admin-first features** including branding, export/import, and secure management
-
-## System Architecture
-
-### Frontend
-- React 18 + TypeScript
-- Wouter routing
-- Radix UI + Tailwind CSS
-- React Hook Form + Zod validation
-- TanStack Query for server state
-
-### Backend
-- Express.js + TypeScript
-- Passport.js local authentication
-- PostgreSQL-backed sessions
-- AES-256-GCM encryption for sensitive data
-
-### Database
-- PostgreSQL 16
-- Drizzle ORM + Drizzle Kit
-
-## Recent Improvements
-
-- Enhanced site branding support with logo, favicon, and site title updates
-- Improved mobile layouts, responsive spacing, and search overlay fixes
-- Rebuilt search system for desktop and mobile experiences
-- Fixed category status updates and admin endpoint issues
-- Improved admin UX with loading states and better error handling
-- Removed caching logic and WebSocket dependencies for simpler architecture
 
 ## Installation
 
@@ -86,13 +60,13 @@ Explore the live store here:
 
 Visit the live demo and explore the full experience:
 
-[https://fb-shoes.vercel.app](https://fb-shoes.vercel.app)
+[https://shop-flow.up.railway.app](https://shop-flow.up.railway.app)
 
 ---
 
 ### GitHub Description
 
-**ShopFlow** is a modern full-stack eCommerce platform with a polished live storefront, secure auth, admin dashboard, dynamic branding tools, and PostgreSQL-backed data management. Live demo: https://fb-shoes.vercel.app
+**ShopFlow** is a modern full-stack eCommerce platform with a polished live storefront, secure auth, admin dashboard, dynamic branding tools, and PostgreSQL-backed data management. Live demo: https://shop-flow.up.railway.app
 
 ## Recent Changes
 - **Complete Site Branding System (Aug 4, 2025)**: Implemented comprehensive site branding functionality with site logo, favicon, and site name customization. Added database columns (site_logo, favicon, site_name) to editor_settings table, updated backend routes, created admin editor interface with upload sections, and updated header to dynamically display uploaded branding. Site name input is non-blocking with manual save button for better UX.
